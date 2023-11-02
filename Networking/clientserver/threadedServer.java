@@ -4,6 +4,7 @@ import java.net.Socket;
 
 public class threadedServer implements Runnable {
     int PORT = 12890;
+    int MAXTHREADS;
     Socket socket;
     String Username;
     String data;
