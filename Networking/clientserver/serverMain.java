@@ -16,7 +16,7 @@ public class serverMain {
             ServerSocket sSocket = new ServerSocket(12890);
             while(true) {
                 Socket cSocket = sSocket.accept();
-                threadedServer server = new threadedServer(cSocket, serverIP);
+                threadedServer server = new threadedServer(cSocket, sSocket, serverIP);
                 server.start();
             }
         } catch (IOException ioe) {

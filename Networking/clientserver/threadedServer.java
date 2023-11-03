@@ -19,8 +19,9 @@ public class threadedServer extends Thread{
         this.serverIP = addr;
     }
 
-    public threadedServer(Socket socket, InetAddress addr){
-        this.clientSocket = socket;
+    public threadedServer(Socket csocket, ServerSocket ssocket, InetAddress addr){
+        this.clientSocket = csocket;
+        this.socket = ssocket;
         this.serverIP = addr;
     }
 
@@ -63,11 +64,20 @@ public class threadedServer extends Thread{
             BufferedReader fromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 while(true) {
                     data = fromClient.readLine();
-                    if(data.equals("DONE")) {
-                        close();
+                    if(data == null) {
+                        System.err.println("CLIENT ERROR: null value received");
+                        fromClient.close();
+                        this.close();
+                        break;
+                    } else if (data.equals("DONE")) {
+                        fromClient.close();
+                        this.close();
                         break;
                     }
-                    System.out.println(data);
+                    else{
+                        System.out.println(data);
+                    }
+
                 }
             } catch (IOException e) {
                 System.err.println("Error reading data from client");
@@ -78,6 +88,7 @@ public class threadedServer extends Thread{
     public void close(){
         try {
             socket.close();
+            clientSocket.close();
         } catch (IOException ioe){
             System.err.println("Couldn't close socket");
         }
