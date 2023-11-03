@@ -1,85 +1,79 @@
 import java.io.*;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class threadedServer implements Runnable {
+//public class threadedServer implements Runnable {
+public class threadedServer extends Thread{
     int PORT = 12890;
+    InetAddress serverIP; //= InetAddress.getByName("127.0.0.1");
     static int MAXTHREADS = 4; //use up to 4 threads for clients
     ServerSocket socket;
     Socket clientSocket;
     String Username;
     String data;
 
-    public threadedServer(Socket clientSocket, String username){
-        this.clientSocket = clientSocket;
-        this.Username = username;
+    public threadedServer(Socket socket, InetAddress addr, int port){
+        this.clientSocket = socket;
+        this.PORT = port;
+        this.serverIP = addr;
     }
 
-    public threadedServer(){
-
+    public threadedServer(Socket socket, InetAddress addr){
+        this.clientSocket = socket;
+        this.serverIP = addr;
     }
 
-    public void startServer(){
-        try {
+    public void connectionListen() {
+        System.out.println("Waiting for connections ...");
+        while (true) {
+            try {
+                Socket client = socket.accept();
 
-            //currently just do 2 clients for now
+                /*
+                new Thread(() -> {
+                    System.out.println("Client accepted");
+                    try {
+                        readData(client);
+                        System.out.println(data);
+                    } catch (IOException ioe){
+                        System.err.println("IOException reading client data.");
+                    }
+                }).start();
+                */
 
-            Thread srv1 = new Thread(new threadedServer());
-            Thread srv2 = new Thread(new threadedServer());
-
-            srv1.start();
-            System.out.println("Started client 1 thread");
-            srv2.start();
-            System.out.println("Started client 2 thread");
-
-            /*
-
-            for(int i=0, i < MAXTHREADS
-
-             */
-        } catch (IllegalArgumentException IAE){
-            System.err.println("Specified port outside of range (0-65535)");
-        } //catch (IOException ioe){
-          //  System.err.println("Exception with sockets");
-        //}
+            } catch (IOException ioe){
+                System.err.println("IO error with socket connection.");
+            }
+        }
     }
 
-    public void writeData(String data){
+    public void writeToClient(String data){
         //write to outputStream
     }
 
-    public String readData() throws IOException {
-        BufferedReader fromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-        return fromServer.readLine();
-    }
-
-    public String getData(){
-        return data;
-    }
-
-    public String getUsername() {
-        return Username;
+    public String getAddress(){
+        return serverIP.toString();
     }
 
     @Override
     public void run() {
         //create a new server object which opens and accepts a client's connection
-        while(true){
-            try {
-                data = readData();
-                if(!data.equals("DONE")){
+        try {
+            BufferedReader fromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                while(true) {
+                    data = fromClient.readLine();
+                    if(data.equals("DONE")) {
+                        close();
+                        break;
+                    }
                     System.out.println(data);
-                }
-                else {
-                    close();
-                    break;
                 }
             } catch (IOException e) {
                 System.err.println("Error reading data from client");
             }
 
         }
-    }
 
     public void close(){
         try {
