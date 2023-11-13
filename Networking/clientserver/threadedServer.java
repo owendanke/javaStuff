@@ -2,6 +2,8 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
+import java.util.ArrayList;
 
 //public class threadedServer implements Runnable {
 public class threadedServer extends Thread{
@@ -12,6 +14,8 @@ public class threadedServer extends Thread{
     Socket clientSocket;
     String Username;
     String data;
+    PrintWriter writer;
+    ArrayList<threadedServer> serverThreads;
 
     public threadedServer(Socket socket, InetAddress addr, int port){
         this.clientSocket = socket;
@@ -19,38 +23,32 @@ public class threadedServer extends Thread{
         this.serverIP = addr;
     }
 
-    public threadedServer(Socket csocket, ServerSocket ssocket, InetAddress addr){
+    public threadedServer(Socket csocket, ServerSocket sSocket, InetAddress addr, ArrayList<threadedServer> serverThreads){
         this.clientSocket = csocket;
-        this.socket = ssocket;
+        this.socket = sSocket;
         this.serverIP = addr;
+        this.serverThreads = serverThreads;
     }
 
-    public void connectionListen() {
-        System.out.println("Waiting for connections ...");
-        while (true) {
-            try {
-                Socket client = socket.accept();
+    private void writeToClient(String output) throws IOException{
+        writer.println(output);
+        //toClient.close();
+    }
 
-                /*
-                new Thread(() -> {
-                    System.out.println("Client accepted");
-                    try {
-                        readData(client);
-                        System.out.println(data);
-                    } catch (IOException ioe){
-                        System.err.println("IOException reading client data.");
-                    }
-                }).start();
-                */
-
-            } catch (IOException ioe){
-                System.err.println("IO error with socket connection.");
-            }
+    private void writeAll(String output) throws IOException{
+        //PrintWriter clientOutput = new PrintWriter(clientSocket.getOutputStream(), true);
+        for(threadedServer server : serverThreads){
+            server.writer.println(output);
         }
     }
 
-    public void writeToClient(String data){
-        //write to outputStream
+    private void getUsername(BufferedReader reader){
+        try{
+            writeToClient("Username: ");
+            Username = reader.readLine();
+        } catch (IOException e){
+            System.err.println(e);
+        }
     }
 
     public String getAddress(){
@@ -61,34 +59,50 @@ public class threadedServer extends Thread{
     public void run() {
         //create a new server object which opens and accepts a client's connection
         try {
+            writer = new PrintWriter(clientSocket.getOutputStream(), true);
             BufferedReader fromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
+            getUsername(fromClient);
+            System.out.println(Username + " has connected");
+            this.writeAll(Username + " has connected");
+
                 while(true) {
                     data = fromClient.readLine();
                     if(data == null) {
-                        System.err.println("CLIENT ERROR: null value received");
+                        System.err.println("CLIENT ERROR: null value received. Closing...");
                         fromClient.close();
                         this.close();
                         break;
                     } else if (data.equals("DONE")) {
+                        System.out.println("Client disconnected");
+                        this.writeToClient("Disconnected");
+                        this.writeAll(Username + " has left");
                         fromClient.close();
                         this.close();
                         break;
+
                     }
                     else{
-                        System.out.println(data);
+                        System.out.println(Username + ": " + data);
+                        //write to sender
+                        this.writeToClient(Username + ": " + data);
+                        //write to others
+                        //this.writeAll(Username + ": " + data);
                     }
 
                 }
+            } catch (SocketException se){
+                System.err.println("Client socket exception, did the client disconnect?\n" + se);
             } catch (IOException e) {
-                System.err.println("Error reading data from client");
-            }
-
+                System.err.println("Error reading data from client\n" + e);
         }
+    }
 
     public void close(){
         try {
-            socket.close();
             clientSocket.close();
+            socket.close();
+            System.out.println("Closed sockets");
         } catch (IOException ioe){
             System.err.println("Couldn't close socket");
         }
